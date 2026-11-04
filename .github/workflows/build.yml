@@ -12,21 +12,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Покажем в логах, что вообще загружено в репозиторий
-      - name: List files
-        run: ls -la
+      # Устанавливаем программу для распаковки .7z
+      - name: Install 7-Zip
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full
+
+      # Ищем любой архив (.zip или .7z) и распаковываем
+      - name: Extract Archive
+        run: |
+          ARCHIVE_FILE=$(find . -maxdepth 1 \( -name "*.zip" -o -name "*.7z" \) | head -n 1)
+          if [ -z "$ARCHIVE_FILE" ]; then
+            echo "ОШИБКА: Архив не найден!"
+            exit 1
+          fi
+          echo "Найден архив: $ARCHIVE_FILE"
+          if [[ "$ARCHIVE_FILE" == *.zip ]]; then
+            unzip "$ARCHIVE_FILE" -d project_folder
+          else
+            7z x "$ARCHIVE_FILE" -oproject_folder
+          fi
 
       - name: Setup NDK
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: r25c
 
-      # Умная сборка: ищет CMakeLists.txt где угодно
+      # Ищем CMakeLists.txt внутри распакованной папки и собираем
       - name: Build with CMake
         run: |
-          CMAKE_FILE=$(find . -name "CMakeLists.txt" | head -n 1)
+          CMAKE_FILE=$(find project_folder -name "CMakeLists.txt" | head -n 1)
           if [ -z "$CMAKE_FILE" ]; then
-            echo "ОШИБКА: Файл CMakeLists.txt не найден в репозитории!"
+            echo "ОШИБКА: Файл CMakeLists.txt не найден в архиве!"
             exit 1
           fi
           CMAKE_DIR=$(dirname "$CMAKE_FILE")
