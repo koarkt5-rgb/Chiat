@@ -12,9 +12,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Этот шаг покажет роботу, какие файлы он вообще видит
+      - name: List files to debug
+        run: ls -la
+
+      # Этот шаг сам найдет любой ZIP в корне и распакует его
       - name: Unzip Source Code
         run: |
-          unzip Android-Imgui-Template-main.zip -d project_folder
+          ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" -print -quit)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ОШИБКА: Робот не видит ни одного ZIP-файла в корне репозитория!"
+            exit 1
+          fi
+          echo "Найден архив: $ZIP_FILE"
+          unzip "$ZIP_FILE" -d project_folder
 
       - name: Setup NDK
         uses: nttld/setup-ndk@v1
