@@ -12,31 +12,30 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Этот шаг покажет роботу, какие файлы он вообще видит
-      - name: List files to debug
+      # Покажем в логах, что вообще загружено в репозиторий
+      - name: List files
         run: ls -la
-
-      # Этот шаг сам найдет любой ZIP в корне и распакует его
-      - name: Unzip Source Code
-        run: |
-          ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" -print -quit)
-          if [ -z "$ZIP_FILE" ]; then
-            echo "ОШИБКА: Робот не видит ни одного ZIP-файла в корне репозитория!"
-            exit 1
-          fi
-          echo "Найден архив: $ZIP_FILE"
-          unzip "$ZIP_FILE" -d project_folder
 
       - name: Setup NDK
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: r25c
 
+      # Умная сборка: ищет CMakeLists.txt где угодно
       - name: Build with CMake
         run: |
-          cd project_folder
-          find . -name "CMakeLists.txt" -execdir sh -c 'cmake -B build -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 . && cmake --build build --config Release' \;
+          CMAKE_FILE=$(find . -name "CMakeLists.txt" | head -n 1)
+          if [ -z "$CMAKE_FILE" ]; then
+            echo "ОШИБКА: Файл CMakeLists.txt не найден в репозитории!"
+            exit 1
+          fi
+          CMAKE_DIR=$(dirname "$CMAKE_FILE")
+          echo "Найдена папка для сборки: $CMAKE_DIR"
+          cd "$CMAKE_DIR"
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 .
+          cmake --build build --config Release
 
+      # Собираем все полученные .so файлы
       - name: Upload SO Artifact
         uses: actions/upload-artifact@v4
         with:
