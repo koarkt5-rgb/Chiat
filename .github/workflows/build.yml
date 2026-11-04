@@ -1,0 +1,33 @@
+name: Build Cheat SO
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Unzip Source Code
+        run: |
+          unzip Android-Imgui-Template-main.zip -d project_folder
+
+      - name: Setup NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r25c
+
+      - name: Build with CMake
+        run: |
+          cd project_folder
+          find . -name "CMakeLists.txt" -execdir sh -c 'cmake -B build -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 . && cmake --build build --config Release' \;
+
+      - name: Upload SO Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cheat-SO-File
+          path: '**/*.so'
