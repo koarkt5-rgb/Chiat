@@ -12,47 +12,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Устанавливаем программу для распаковки .7z
-      - name: Install 7-Zip
-        run: sudo apt-get update && sudo apt-get install -y p7zip-full
-
-      # Ищем любой архив (.zip или .7z) и распаковываем
-      - name: Extract Archive
-        run: |
-          ARCHIVE_FILE=$(find . -maxdepth 1 \( -name "*.zip" -o -name "*.7z" \) | head -n 1)
-          if [ -z "$ARCHIVE_FILE" ]; then
-            echo "ОШИБКА: Архив не найден!"
-            exit 1
-          fi
-          echo "Найден архив: $ARCHIVE_FILE"
-          if [[ "$ARCHIVE_FILE" == *.zip ]]; then
-            unzip "$ARCHIVE_FILE" -d project_folder
-          else
-            7z x "$ARCHIVE_FILE" -oproject_folder
-          fi
-
       - name: Setup NDK
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: r25c
 
-      # Ищем CMakeLists.txt внутри распакованной папки и собираем
       - name: Build with CMake
         run: |
-          CMAKE_FILE=$(find project_folder -name "CMakeLists.txt" | head -n 1)
-          if [ -z "$CMAKE_FILE" ]; then
-            echo "ОШИБКА: Файл CMakeLists.txt не найден в архиве!"
-            exit 1
-          fi
-          CMAKE_DIR=$(dirname "$CMAKE_FILE")
-          echo "Найдена папка для сборки: $CMAKE_DIR"
-          cd "$CMAKE_DIR"
           cmake -B build -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 .
           cmake --build build --config Release
 
-      # Собираем все полученные .so файлы
       - name: Upload SO Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Cheat-SO-File
-          path: '**/*.so'
+          path: 'build/libmodmenu.so'
